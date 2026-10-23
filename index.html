@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuScript Editor - CreatorDock</title>
+    <!-- Tailwind CSS & Lucide Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { bg-color: white !important; background: white !important; color: black !important; padding: 0 !important; }
+            .print-border { border: 1px solid #ccc !important; box-shadow: none !important; }
+            .page-break { page-break-inside: avoid; }
+        }
+        [contenteditable]:focus { outline: 2px solid #2563eb; border-radius: 4px; padding: 2px; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans antialiased">
+
+    <!-- MODAL SETUP AWAL -->
+    <div id="setupModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-lg w-full border border-gray-100">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                    <i data-lucide="video" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">DocuScript Editor</h2>
+                    <p class="text-xs text-blue-600 font-semibold tracking-wide uppercase">CreatorDock Studio</p>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-600 mb-6">Editor naskah dokumenter interaktif standar siaran (AV Script 2-Kolom) tanpa perlu registrasi.</p>
+            
+            <form id="scriptForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Judul Project Dokumenter</label>
+                    <input type="text" id="inputTitle" required placeholder="Contoh: Jejak Tradisi Pesisir" 
+                           class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Target Durasi (Mnt)</label>
+                        <input type="number" id="inputDuration" min="1" max="180" value="5" required 
+                               class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Penulis / Sutradara</label>
+                        <input type="text" id="inputAuthor" placeholder="Nama Anda" 
+                               class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Pendekatan Dokumenter</label>
+                    <select id="inputStyle" class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                        <option value="Expository (Naratif & VO Dominan)">Expository (Naratif & VO Dominan)</option>
+                        <option value="Observational (Cinematic / Cinema Verite)">Observational (Cinematic / Cinema Verite)</option>
+                        <option value="Participatory / Investigative (Host/Interviewer)">Participatory / Investigative (Host/Interviewer)</option>
+                        <option value="Poetic / Visual Narrative (Atmosferik)">Poetic / Visual Narrative (Atmosferik)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2">
+                    <span>Mulai Menulis Naskah</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN EDITOR INTERFACE -->
+    <div id="editorContainer" class="hidden min-h-screen flex flex-col">
+        
+        <!-- TOP TOOLBAR (NO PRINT) -->
+        <header class="no-print sticky top-0 z-40 bg-slate-900 text-white px-4 py-3 shadow-md">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="font-bold text-lg tracking-tight text-blue-400 flex items-center gap-2">
+                        <i data-lucide="clapperboard" class="w-5 h-5"></i> DocuScript
+                    </span>
+                    <span class="text-slate-600">|</span>
+                    <span id="headerDocTitle" class="text-sm font-medium text-slate-300 truncate max-w-[200px]">Judul Naskah</span>
+                </div>
+
+                <!-- Action Controls -->
+                <div class="flex items-center flex-wrap gap-2">
+                    <button onclick="toggleScratchpad()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-700">
+                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                        <span>Bank Transkrip/Riset</span>
+                    </button>
+                    <button onclick="addRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Tambah Scene</span>
+                    </button>
+                    <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                        <span>Cetak / PDF</span>
+                    </button>
+                    <button onclick="resetScript()" class="bg-slate-800 hover:bg-red-900/50 text-red-400 px-2.5 py-1.5 rounded-lg text-xs font-medium transition">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- WORKSPACE AREA WITH SIDEBAR -->
+        <div class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex gap-6">
+            
+            <!-- SCRATCHPAD / TRANSCRIPT PANEL (NO PRINT) -->
+            <aside id="scratchpadPanel" class="no-print hidden w-80 bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex flex-col h-[calc(100vh-100px)] sticky top-20">
+                <div class="flex items-center justify-between pb-3 border-b mb-3">
+                    <h3 class="font-bold text-sm text-gray-800 flex items-center gap-2">
+                        <i data-lucide="notebook-pen" class="w-4 h-4 text-blue-600"></i> Catatan & Transkrip
+                    </h3>
+                    <button onclick="toggleScratchpad()" class="text-gray-400 hover:text-gray-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <p class="text-xs text-gray-500 mb-2">Tempel transkrip wawancara atau catatan riset di sini untuk mempermudah salin-tempel ke naskah.</p>
+                <textarea id="scratchpadText" placeholder="Contoh Transkrip Wawancara:
+Pak Ahmad (02:15): 'Laut sekarang makin sulit diprediksi, angin timur datang lebih awal...'" 
+                          class="w-full flex-1 p-3 border border-gray-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-slate-50"></textarea>
+            </aside>
+
+            <!-- MAIN DOCUMENT PAPER (A4 LOOK) -->
+            <main class="flex-1 bg-white p-6 md:p-10 rounded-2xl shadow-xl border border-gray-200 print-border min-h-[900px] flex flex-col justify-between">
+                <div>
+                    <!-- DOCUMENT HEADER -->
+                    <div class="border-b-2 border-gray-900 pb-5 mb-6">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 id="displayTitle" class="text-3xl font-black uppercase tracking-tight text-gray-900 mb-1">JUDUL NASKAH</h1>
+                                <p class="text-xs text-gray-500 font-medium">DocuScript AV Format • CreatorDock</p>
+                            </div>
+                            <div class="text-right text-xs text-gray-500 space-y-0.5">
+                                <div><strong class="text-gray-700">Penulis:</strong> <span id="displayAuthor">-</span></div>
+                                <div><strong class="text-gray-700">Tanggal:</strong> <span id="displayDate">24 Okt 2026</span></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-600">
+                            <div><strong class="text-gray-800">Target Durasi:</strong> <span id="displayDuration">0</span> Mnt</div>
+                            <div><strong class="text-gray-800">Pendekatan:</strong> <span id="displayStyle">-</span></div>
+                            <div><strong class="text-gray-800">Est. Durasi VO:</strong> <span id="wordCountCalc" class="text-blue-600 font-bold">0 mnt 0 det</span></div>
+                            <div><strong class="text-gray-800">Total Kata Audio:</strong> <span id="totalWordCount">0</span> kata</div>
+                        </div>
+                    </div>
+
+                    <!-- QUICK INSERT TAGS TOOLBAR (NO PRINT) -->
+                    <div class="no-print bg-slate-50 p-3 rounded-xl border border-slate-200 mb-4 flex flex-wrap items-center gap-2 text-xs">
+                        <span class="font-bold text-slate-500 mr-1">Quick Tag:</span>
+                        <button onclick="insertTag('VISUAL', '[B-ROLL] ')" class="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 font-semibold text-slate-700">+ [B-ROLL]</button>
+                        <button onclick="insertTag('VISUAL', '[SOT / TALKING HEAD] ')" class="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 font-semibold text-slate-700">+ [SOT]</button>
+                        <button onclick="insertTag('VISUAL', '[ARCHIVAL FOOTAGE] ')" class="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 font-semibold text-slate-700">+ [ARCHIVAL]</button>
+                        <button onclick="insertTag('VISUAL', '[CG / LOWER THIRD: Name - Title] ')" class="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 font-semibold text-slate-700">+ [GRAPHIC]</button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="insertTag('AUDIO', '<b>[VO]:</b> ')" class="px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded hover:bg-blue-100 font-semibold">+ [VO]</button>
+                        <button onclick="insertTag('AUDIO', '<b>[BGM]:</b> ')" class="px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded hover:bg-blue-100 font-semibold">+ [BGM]</button>
+                        <button onclick="insertTag('AUDIO', '<b>[SFX]:</b> ')" class="px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded hover:bg-blue-100 font-semibold">+ [SFX]</button>
+                    </div>
+
+                    <!-- AV SCRIPT TABLE (2 COLUMNS) -->
+                    <table class="w-full border-collapse border border-gray-300 text-xs md:text-sm">
+                        <thead>
+                            <tr class="bg-slate-900 text-white text-left uppercase text-xs tracking-wider">
+                                <th class="p-2.5 border border-gray-300 w-10 text-center no-print">Status</th>
+                                <th class="p-2.5 border border-gray-300 w-12 text-center">#</th>
+                                <th class="p-2.5 border border-gray-300 w-[43%]">VISUAL (Video / Shots / B-Roll / CG)</th>
+                                <th class="p-2.5 border border-gray-300 w-[45%]">AUDIO (VO / Wawancara / SFX / BGM)</th>
+                                <th class="p-2.5 border border-gray-300 w-8 text-center no-print"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="scriptTableBody">
+                            <!-- Rows generated via Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <footer class="mt-12 pt-4 border-t border-gray-200 text-xs text-gray-400 flex justify-between items-center">
+                    <span>DocuScript Editor • Format AV Broadcast Standar</span>
+                    <span>Tersimpan Otomatis Lokal</span>
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        lucide.createIcons();
+
+        let activeEditable = null;
+
+        // Date Initialization
+        document.getElementById('displayDate').innerText = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        // Submit Form Setup
+        document.getElementById('scriptForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            document.getElementById('displayTitle').innerText = document.getElementById('inputTitle').value;
+            document.getElementById('headerDocTitle').innerText = document.getElementById('inputTitle').value;
+            document.getElementById('displayDuration').innerText = document.getElementById('inputDuration').value;
+            document.getElementById('displayAuthor').innerText = document.getElementById('inputAuthor').value || 'Penulis';
+            document.getElementById('displayStyle').innerText = document.getElementById('inputStyle').value;
+
+            document.getElementById('setupModal').classList.add('hidden');
+            document.getElementById('editorContainer').classList.remove('hidden');
+
+            loadPresetRows();
+        });
+
+        const defaultPreset = [
+            {
+                status: "bg-emerald-500",
+                visual: "<b>[B-ROLL]</b> WIDE SHOT: Suasana dermaga nelayan di pagi hari saat matahari terbit.<br><i>CG: 'Kabupaten Kolaka, Sulawesi Tenggara'</i>",
+                audio: "<b>[BGM]:</b> Musik akustik bernuansa tenang (Fade In).<br><b>[SFX]:</b> Suara deru ombak & unggas laut."
+            },
+            {
+                status: "bg-amber-500",
+                visual: "<b>[B-ROLL]</b> MEDIUM SHOT: Tangan nelayan sedang merapikan jaring perahu.",
+                audio: "<b>[VO]:</b> Kehidupan di pesisir selalu dimulai sebelum fajar menyapa. Bagi warga lokal, laut adalah sumber kehidupan utama."
+            },
+            {
+                status: "bg-blue-500",
+                visual: "<b>[SOT / TALKING HEAD]</b> CLOSE UP: Pak Ahmad berbicara santai menghadap kamera.<br><i>CG: 'Pak Ahmad - Nelayan Lokal'</i>",
+                audio: "<b>[SOT (Pak Ahmad)]:</b><br>\"Kami sudah melaut dari generasi ke generasi. Apapun kondisinya, laut ini rumah kami.\""
+            }
+        ];
+
+        function loadPresetRows() {
+            const table = document.getElementById('scriptTableBody');
+            table.innerHTML = '';
+            defaultPreset.forEach((item, index) => {
+                createRow(index + 1, item.visual, item.audio, item.status);
+            });
+            updateWordCount();
+        }
+
+        function createRow(index, visual = '', audio = '', statusClass = 'bg-emerald-500') {
+            const tr = document.createElement('tr');
+            tr.className = "page-break border-b border-gray-200 hover:bg-slate-50/50 transition";
+            tr.innerHTML = `
+                <td class="p-2 border border-gray-300 text-center no-print align-top">
+                    <button onclick="cycleStatus(this)" class="w-3.5 h-3.5 rounded-full ${statusClass} inline-block cursor-pointer" title="Klik untuk ubah status adegan"></button>
+                </td>
+                <td class="p-2 border border-gray-300 text-center text-xs font-mono text-gray-400 align-top row-number">${index}</td>
+                <td class="p-3 border border-gray-300 align-top editable-cell visual-cell" contenteditable="true" onfocus="activeEditable=this" oninput="updateWordCount()">${visual || 'Tulis deskripsi visual/shot...'}</td>
+                <td class="p-3 border border-gray-300 align-top editable-cell audio-cell" contenteditable="true" onfocus="activeEditable=this" oninput="updateWordCount()">${audio || 'Tulis narasi VO/SFX...'}</td>
+                <td class="p-2 border border-gray-300 text-center align-top no-print">
+                    <button onclick="deleteRow(this)" class="text-gray-300 hover:text-red-500 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </td>
+            `;
+            document.getElementById('scriptTableBody').appendChild(tr);
+            lucide.createIcons();
+            updateRowNumbers();
+        }
+
+        function addRow() {
+            createRow(document.getElementById('scriptTableBody').children.length + 1);
+        }
+
+        function deleteRow(btn) {
+            if(document.getElementById('scriptTableBody').children.length > 1) {
+                btn.closest('tr').remove();
+                updateRowNumbers();
+                updateWordCount();
+            }
+        }
+
+        function updateRowNumbers() {
+            document.querySelectorAll('.row-number').forEach((td, i) => td.innerText = i + 1);
+        }
+
+        // Toggle Status Warna Adegan: 🟢 Fix -> 🟡 Need Footage -> 🔵 Needs Interview
+        function cycleStatus(btn) {
+            if(btn.classList.contains('bg-emerald-500')) {
+                btn.className = "w-3.5 h-3.5 rounded-full bg-amber-500 inline-block cursor-pointer";
+            } else if(btn.classList.contains('bg-amber-500')) {
+                btn.className = "w-3.5 h-3.5 rounded-full bg-blue-500 inline-block cursor-pointer";
+            } else {
+                btn.className = "w-3.5 h-3.5 rounded-full bg-emerald-500 inline-block cursor-pointer";
+            }
+        }
+
+        // Insert Quick Tags
+        function insertTag(type, tagHtml) {
+            if(!activeEditable) return;
+            if((type === 'VISUAL' && activeEditable.classList.contains('visual-cell')) ||
+               (type === 'AUDIO' && activeEditable.classList.contains('audio-cell'))) {
+                document.execCommand('insertHTML', false, tagHtml);
+            }
+        }
+
+        // Kalkulasi Durasi VO (Standar Broadcast: 130 Kata / Menit)
+        function updateWordCount() {
+            let totalWords = 0;
+            document.querySelectorAll('.audio-cell').forEach(cell => {
+                const cleanText = cell.innerText.replace(/\[VO\]:|\[BGM\]:|\[SFX\]:|\[SOT.*?\]:/g, '');
+                const words = cleanText.trim().split(/\s+/).filter(w => w.length > 0);
+                totalWords += words.length;
+            });
+
+            document.getElementById('totalWordCount').innerText = totalWords;
+            const totalSeconds = Math.round((totalWords / 130) * 60);
+            const min = Math.floor(totalSeconds / 60);
+            const sec = totalSeconds % 60;
+            document.getElementById('wordCountCalc').innerText = `${min} mnt ${sec} det`;
+        }
+
+        function toggleScratchpad() {
+            document.getElementById('scratchpadPanel').classList.toggle('hidden');
+        }
+
+        function resetScript() {
+            if(confirm('Ulangi naskah dari awal? Data di lembar kerja akan direset.')) {
+                document.getElementById('setupModal').classList.remove('hidden');
+                document.getElementById('editorContainer').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
