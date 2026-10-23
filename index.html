@@ -10,10 +10,10 @@
     <style>
         /* Tambahan agar header aman dari status bar / notch ponsel (iOS & Android) */
         @media (max-width: 768px) {
-        header.sticky {
-            padding-top: max(env(safe-area-inset-top), 2rem) !important;
-        }
+    header.sticky {
+        padding-top: max(env(safe-area-inset-top), 2.5rem) !important;
     }
+}
 
         @media print {
             .no-print { display: none !important; }
@@ -103,8 +103,8 @@
     <!-- MAIN EDITOR INTERFACE -->
     <div id="editorContainer" class="hidden min-h-screen flex flex-col">
         
-        <!-- TOP TOOLBAR (NO PRINT) -->
-<header class="no-print sticky top-0 z-40 bg-slate-900 text-white px-3 py-3 pt-12 md:pt-2.5 shadow-md">
+<!-- TOP TOOLBAR (NO PRINT) -->
+<header class="no-print sticky top-0 z-40 bg-slate-900 text-white px-3 py-3 pt-16 md:pt-2.5 shadow-md">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                     <span class="font-bold text-sm md:text-base tracking-tight text-blue-400 flex items-center gap-1.5">
